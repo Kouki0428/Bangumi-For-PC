@@ -68,23 +68,26 @@ function buildPluginApi(id: string) {
       if (r.ok) return r.data
       throw new Error(r.error || 'plugin-call-failed')
     })
-  return {
-    // —— 插件独立存储（主进程按 key 前缀互相隔离）——
+  const api: {
+    storage: any
+    settings: any
+    collection: any
+    ui: any
+    network: any
+    PluginApi?: typeof api
+  } = {
     storage: {
       get: call('storage.get'),
       set: call('storage.set')
     },
-    // —— 设置（需用户在插件权限里授予 settings）——
     settings: {
       get: call('settings.get'),
       set: call('settings.set')
     },
-    // —— 收藏 / 作品数据（需授予 collection / subject）——
     collection: {
       getAll: call('collection.getAll'),
       getExisting: call('collection.getExisting')
     },
-    // —— UI：受限 DOM 挂载（只挂到白名单容器）+ 提示 ——
     ui: {
       mount: (selector: string, html: string) => {
         const el =
@@ -97,8 +100,17 @@ function buildPluginApi(id: string) {
       toast: (msg: string) => {
         console.info(`[plugin:${id}] ${msg}`)
       }
+    },
+    network: {
+      searchVndb: call('network.searchVndb'),
+      searchMal: call('network.searchMal'),
+      searchAnilist: call('network.searchAnilist'),
+      searchKitsu: call('network.searchKitsu')
     }
   }
+  // 让插件代码能以 PluginApi.xxx 风格调用
+  api.PluginApi = api
+  return api
 }
 
 function runScript(d: PluginDescriptor): void {
@@ -124,7 +136,8 @@ export const ALL_PERMISSIONS: PluginPermission[] = [
   'collection',
   'subject',
   'settings',
-  'ui'
+  'ui',
+  'network'
 ]
 
 export const PERMISSION_LABELS: Record<PluginPermission, string> = {
@@ -134,7 +147,8 @@ export const PERMISSION_LABELS: Record<PluginPermission, string> = {
   collection: '读取收藏',
   subject: '读取作品',
   settings: '读写设置',
-  ui: '界面挂载'
+  ui: '界面挂载',
+  network: '网络请求'
 }
 
 export function usePlugins() {

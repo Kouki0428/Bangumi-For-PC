@@ -4,7 +4,10 @@ import { subjectClient } from '@/services/subjectClient'
 import type { SubjectComment } from '@shared/types'
 
 const props = defineProps<{
-  subjectId: string | null
+  subjectId?: string | null
+  /** 角色/人物评论：设置后优先于 subjectId */
+  entityKind?: 'characters' | 'persons'
+  entityId?: number
   /** 媒体类型，用于决定收藏状态中文词：anime/manga 用「看」系，book 用「读」系，game 用「玩」系 */
   mediaType?: 'anime' | 'book' | 'manga' | 'game'
 }>()
@@ -65,6 +68,20 @@ async function load(p = 0) {
   error.value = ''
   notFound.value = false
   page.value = p
+  if (props.entityKind && props.entityId) {
+    loading.value = true
+    try {
+      const r = await subjectClient.getEntityComments(props.entityKind, props.entityId, p * PAGE_SIZE)
+      comments.value = r.comments
+      total.value = r.total
+      notFound.value = r.notFound ?? false
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e)
+    } finally {
+      loading.value = false
+    }
+    return
+  }
   if (!props.subjectId) return
   loading.value = true
   try {
@@ -87,13 +104,13 @@ function nextPage() {
 }
 
 onMounted(load)
-watch(() => props.subjectId, () => load(0))
+watch(() => [props.subjectId, props.entityKind, props.entityId], () => load(0))
 </script>
 
 <template>
   <div class="panel tucao-box">
     <h3>吐槽箱</h3>
-    <p v-if="!subjectId" class="placeholder">无 Bangumi 条目，无法加载吐槽。</p>
+    <p v-if="!subjectId && !entityKind" class="placeholder">无 Bangumi 条目，无法加载吐槽。</p>
     <p v-else-if="loading" class="placeholder">加载中…</p>
     <p v-else-if="error" class="placeholder err">{{ error }}</p>
     <p v-else-if="notFound" class="placeholder warn">

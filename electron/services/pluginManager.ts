@@ -18,7 +18,8 @@ export const PLUGIN_PERMISSIONS: PluginPermission[] = [
   'collection',
   'subject',
   'settings',
-  'ui'
+  'ui',
+  'network'
 ]
 
 export function pluginDir(): string {

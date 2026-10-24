@@ -856,6 +856,83 @@ export async function getSubjectComments(
   return { comments, total: json.total ?? comments.length, notFound: false }
 }
 
+/** 取 Bangumi 角色/人物详情页的评论（吐槽）。
+ *  端点：GET https://next.bgm.tv/p1/{characters|persons}/{id}/comments （匿名可访问，返回裸数组）。
+ *  字段与 subject 吐槽完全一致，仅包装格式为裸数组而非 {data,total}。 */
+export async function getEntityComments(
+  kind: 'characters' | 'persons',
+  id: number,
+  offset = 0,
+  limit = 20,
+  token?: string
+): Promise<SubjectCommentsResult> {
+  const url = `https://next.bgm.tv/p1/${kind}/${encodeURIComponent(id)}/comments?limit=${limit}&offset=${offset}`
+  const res = token
+    ? await authedFetch(url, token, { headers: { Accept: 'application/json' } })
+    : await fetch(url, { headers: authHeaders() })
+  if (res.status === 404 || res.status === 410) {
+    return { comments: [], total: 0, notFound: true }
+  }
+  if (!res.ok) throw new Error(`获取${kind === 'characters' ? '角色' : '人物'}评论失败 (HTTP ${res.status})`)
+  const json = (await res.json()) as any
+  const list: any[] = Array.isArray(json) ? json : (json.data ?? json.comments ?? [])
+  const mapComment = (c: any): SubjectComment => {
+    const creator = c.user ?? c['@creator'] ?? c.creator ?? {}
+    const avatar = creator.avatar
+    const avatarUrl =
+      (avatar && (avatar.large || avatar.medium || avatar.small)) ||
+      (typeof avatar === 'string' ? avatar : null)
+    const result: SubjectComment = {
+      id: c.id,
+      content: c.comment ?? c.content ?? c.text ?? '',
+      createdAt: c.updatedAt ?? c.created_at ?? c.createdAt ?? null,
+      rate: typeof c.rate === 'number' ? c.rate : 0,
+      collectionType: typeof c.type === 'number' ? c.type : 0,
+      creator: {
+        username: creator.username ?? '',
+        nickname: creator.nickname ?? creator.username ?? '',
+        avatar: avatarUrl
+      }
+    }
+    if (Array.isArray(c.replies) && c.replies.length) {
+      result.replies = c.replies.map(mapComment)
+    }
+    return result
+  }
+  const comments: SubjectComment[] = list.map(mapComment)
+  return { comments, total: json.total ?? comments.length, notFound: false }
+}
+
+/** 发布角色/人物评论到 Bangumi（p1 POST /p1/{characters|persons}/{id}/comments）。
+ *  需有效 Bearer 令牌；turnstile 可能不需要（角色/人物评论无安全挑战）。 */
+export async function postEntityComment(
+  kind: 'characters' | 'persons',
+  id: number,
+  content: string,
+  token: string,
+  relatedID?: number | null
+): Promise<number> {
+  const body: Record<string, unknown> = { content }
+  if (relatedID != null) body.relatedID = relatedID
+  const res = await fetch(
+    `https://next.bgm.tv/p1/${kind}/${encodeURIComponent(id)}/comments`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'User-Agent': UA
+      },
+      body: JSON.stringify(body)
+    }
+  )
+  if (res.status === 401) throw new Error(tagError('AUTH', 'Bangumi 授权已失效，请重新登录'))
+  if (!res.ok) throw new Error(`发表评论失败 (HTTP ${res.status})`)
+  const json = (await res.json()) as any
+  return json.id ?? 0
+}
+
 /** 归一化 p1 讨论串（兼容 camelCase 字段名） */
 function normalizeP1Topic(t: any): BgmTopic {
   const creator = t.creator ?? {}

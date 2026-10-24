@@ -447,6 +447,15 @@ export async function safeFetch(url: string, init?: FetchInit): Promise<MinimalR
     const timeoutMs = i === 0 ? 30000 : 10000
     try {
       const resp = await doRequest(url, init || {}, MAX_REDIRECTS, { agent: s.agent, timeoutMs })
+      // HTTP 5xx：很可能是当前策略（坏代理/被墙节点）导致的服务端或网关错误，
+      // 直连可能反而可用。5xx 不直接返回，尝试下一个策略；仅 4xx（鉴权/不存在等）
+      // 属于服务端明确判定，不触发回退。所有策略都 5xx 时最后返回最后一个响应。
+      if (resp.status >= 500 && i < strategies.length - 1) {
+        await resp.text().catch(() => '')
+        lastErr = new Error(`HTTP ${resp.status}`)
+        console.warn(`[http] 策略「${s.label}」返回 HTTP ${resp.status}，尝试下一个`)
+        continue
+      }
       // 下行字节经包裹流异步累加（text()/json()/body 读取均计数）。
       return wrapWithByteCounting(resp, (n) => {
         pendingReceived += n

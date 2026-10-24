@@ -1,6 +1,6 @@
 import electron from 'electron'
 const { contextBridge, ipcRenderer, webFrame } = electron
-import type { AcgnApi, EntityDetail, SubjectFullDetail, SubjectCharacter, SubjectPerson, EpisodeProgressState, SubjectFullEpisode, EpisodeComment, EpisodeDetail, CacheStats, NetworkStatsResult, BgmTopic, BgmTopicDetail, BgmStatus } from '../shared/types'
+import type { AcgnApi, EntityDetail, SubjectFullDetail, SubjectCharacter, SubjectPerson, SubjectComment, EpisodeProgressState, SubjectFullEpisode, EpisodeComment, EpisodeDetail, CacheStats, NetworkStatsResult, BgmTopic, BgmTopicDetail, BgmStatus } from '../shared/types'
 
 // 仅暴露白名单方法，绝不直接暴露 require / fs / ipcRenderer 本身
 const api: AcgnApi = {
@@ -165,6 +165,14 @@ const api: AcgnApi = {
   },
   subject: {
     getComments: (subjectId: string, offset = 0) => ipcRenderer.invoke('subject:comments', subjectId, offset),
+    getEntityComments: (kind: 'characters' | 'persons', id: number, offset = 0, limit = 200) =>
+      ipcRenderer.invoke('subject:entityComments', kind, id, offset, limit) as Promise<{
+        comments: SubjectComment[]
+        total: number
+        notFound?: boolean
+      }>,
+    postEntityComment: (payload: { kind: 'characters' | 'persons'; id: number; content: string; relatedID?: number | null }) =>
+      ipcRenderer.invoke('subject:postEntityComment', payload) as Promise<number>,
     getTopics: (subjectId: string) =>
       ipcRenderer.invoke('subject:topics', subjectId) as Promise<{
         topics: BgmTopic[]

@@ -83,5 +83,6 @@ function methodToPermission(method: string): PluginPermission | null {
   if (method.startsWith('subject.')) return 'subject'
   if (method.startsWith('settings.')) return 'settings'
   if (method.startsWith('ui.')) return 'ui'
+  if (method.startsWith('network.')) return 'network'
   return null // style/script 是注入能力，不走 call
 }

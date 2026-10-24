@@ -2,6 +2,8 @@ import electron from 'electron'
 const { ipcMain } = electron
 import {
   getSubjectComments,
+  getEntityComments,
+  postEntityComment,
   getSubjectTopics,
   getTopicDetail,
   getTrendingSubjectTopics,
@@ -50,6 +52,24 @@ export function registerSubjectIpc(): void {
         return getSubjectComments(subjectId, offset, 20, token ?? undefined)
       }
     )
+  })
+  // 角色/人物详情页评论（吐槽），端点 /p1/characters|persons/{id}/comments
+  ipcMain.handle('subject:entityComments', async (_e, kind: 'characters' | 'persons', id: number, offset = 0, limit = 200) => {
+    if (!id) return { comments: [], total: 0 }
+    return cachedGet(
+      `entityComments:${kind}:${id}:${offset}:${limit}`,
+      TEN_MIN_MS,
+      async () => {
+        const token = await getValidToken()
+        return getEntityComments(kind, id, offset, limit, token ?? undefined)
+      }
+    )
+  })
+  // 发布角色/人物评论（需登录）
+  ipcMain.handle('subject:postEntityComment', async (_e, payload: { kind: 'characters' | 'persons'; id: number; content: string; relatedID?: number | null }) => {
+    const token = await getValidToken()
+    if (!token) throw new Error('未登录：请先在「个人」页登录 Bangumi 账号')
+    return postEntityComment(payload.kind, payload.id, payload.content, token, payload.relatedID)
   })
   // 某条目的讨论串列表（next p1，匿名可访问；受限条目带令牌）
   ipcMain.handle('subject:topics', async (_e, subjectId: string) => {

@@ -7,6 +7,7 @@ import { useEntityCard } from '@/composables/useEntityCard'
 import { useSearchOverlay } from '@/composables/searchOverlay'
 import { useImagePreview } from '@/composables/useImagePreview'
 import { useSettingsStore } from '@/stores/settings'
+import EntityCommentSection from '@/components/EntityCommentSection.vue'
 
 // 注意：本组件现为「单一 overlay 容器」EntitySubjectCard 的内嵌 body（角色/CV），
 // 外层遮罩、层级(z-index)、Esc/背景点击关闭均由宿主统一管理，这里只负责面板内容。
@@ -382,6 +383,13 @@ watch(
             </div>
           </div>
         </template>
+
+        <!-- 角色/人物评论（吐槽）：复用单集评论风格 -->
+        <EntityCommentSection
+          :entity-kind="entity.kind === 'character' ? 'characters' : 'persons'"
+          :entity-id="entity.id"
+          :glow="settings.immersiveGlow && settings.subjectCardGlow"
+        />
       </div>
     </div>
   </div>

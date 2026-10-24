@@ -108,6 +108,8 @@ export interface SubjectComment {
     nickname: string
     avatar: string | null
   }
+  /** 子评论（回复） */
+  replies?: SubjectComment[]
 }
 
 /** Bangumi 讨论串（next.bgm.tv/p1 条目讨论版，结构化 JSON）。
@@ -1033,6 +1035,10 @@ export interface AcgnApi {
   subject: {
     /** 取 Bangumi 条目吐槽区中其它用户的吐槽（next p1 /subjects/{id}/comments，匿名可访问） */
     getComments: (subjectId: string, offset?: number) => Promise<{ comments: SubjectComment[]; total: number; notFound?: boolean }>
+    /** 取角色/人物详情页评论（吐槽）：next p1 /characters|persons/{id}/comments，匿名可访问 */
+    getEntityComments: (kind: 'characters' | 'persons', id: number, offset?: number, limit?: number) => Promise<{ comments: SubjectComment[]; total: number; notFound?: boolean }>
+    /** 发布角色/人物评论（需登录）：POST /p1/{characters|persons}/{id}/comments */
+    postEntityComment: (payload: { kind: 'characters' | 'persons'; id: number; content: string; relatedID?: number | null }) => Promise<number>
     /** 取某条目的讨论串列表（next p1 /subjects/{id}/topics，匿名可访问；按最后回复排序） */
     getTopics: (subjectId: string) => Promise<{ topics: BgmTopic[]; total: number; notFound?: boolean }>
     /** 取讨论串详情（next p1 /subjects/-/topics/{id}，含全部楼层与楼中楼，匿名可访问） */
@@ -1247,6 +1253,7 @@ export type PluginPermission =
   | 'subject'       // 读取作品数据
   | 'settings'      // 读取/修改应用设置
   | 'ui'            // 挂载 UI 组件 / 弹提示
+  | 'network'       // 跨站网络请求（VNDB/MAL/AniList 等代理搜索）
 
 /** 插件描述（渲染端清单条目） */
 export interface PluginDescriptor {

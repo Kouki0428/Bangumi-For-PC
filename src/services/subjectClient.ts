@@ -18,6 +18,14 @@ export const subjectClient = {
       total: number
       notFound?: boolean
     }>,
+  getEntityComments: (kind: 'characters' | 'persons', id: number, offset = 0, limit = 200) =>
+    window.acgn.subject.getEntityComments(kind, id, offset, limit) as Promise<{
+      comments: SubjectComment[]
+      total: number
+      notFound?: boolean
+    }>,
+  postEntityComment: (payload: { kind: 'characters' | 'persons'; id: number; content: string; relatedID?: number | null }) =>
+    window.acgn.subject.postEntityComment(payload) as Promise<number>,
   /** 某条目的讨论串列表（p1，匿名可访问；按最后回复排序） */
   getTopics: (subjectId: string): Promise<{ topics: BgmTopic[]; total: number; notFound?: boolean }> =>
     window.acgn.subject.getTopics(subjectId),
